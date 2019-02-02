@@ -11,47 +11,43 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import numpy as np
 
-def write_buffer(filename, buffer):
-    t = time.time()
-    np.save(filename, buffer)
-    #print("Saved in {}".format(time.time()-t), filename)
-
 def main(args):
+    
     rospy.init_node("camera", anonymous=True)
-    image_pub = rospy.Publisher("image",Image, queue_size=10)
+   
+    # Need to use the V4L2 backend on Linux to get the right format
+    cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
+    
+    # Set fourcc code to Y16 and disable RGB conversion
+    capture_raw = rospy.get_param('~raw_video', default_value=False)
+
+    if capture_raw:
+        rospy.info("Raw (Y16) capture enabled.")
+        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"Y16 "))
+        cap.set(cv2.CAP_PROP_CONVERT_RGB, False)
+    else:
+        rospy.info("RGB24 capture enabled.")
+
+    queue_size = rospy.get_param('~queue_size', default_value=10)
+    image_pub = rospy.Publisher("image",Image, queue_size=queue_size)
 
     bridge = CvBridge()
-
-    cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
-    cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"Y16 "))
-    cap.set(cv2.CAP_PROP_CONVERT_RGB, False)
-
-    buffer_size = 100
-    buffer = np.zeros((buffer_size,512,640), dtype='uint16')
-
-    i = 0
-    j = 0
+    frame_count = 0
+    prev_capture = time.time()
 
     while not rospy.is_shutdown():
-       t = time.time()
-       res, image = cap.read()
-       if res:
-           image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="passthrough"))
-       #cv2.imwrite("/boson_ws/captures/image_{}.tiff".format(i), image)
 
-           buffer[i] = image
-           i += 1
+        capture_success, image = cap.read()
 
-       if i == buffer_size:
-           #print("Writing")
-           #filename = "/boson_ws/captures/buffer_{}".format(j)
-           #np.save(filename, buffer)
-           #buffer, buffer_double = buffer_double, buffer
-           i = 0
-           j += 1
+        if capture_success:
+            image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="passthrough"))
+            frame_count += 1
+            rospy.logdebug("Frame %d", frame_count)
+        else:
+            rospy.logwarn(5, "Image capture failed")
 
-       #print "FPS", 1.0/(time.time()-t)
-
+        rospy.logdebug("FPS: %f", 1.0/(time.time()-prev_capture))
+        prev_capture = time.time()
 
     cap.release()
 
