@@ -1,7 +1,6 @@
 <launch>
-  <node pkg="capture_boson" name="camera" type="grabber.py" output="screen" />
-  <node pkg="topic_tools" name="throttler" type="throttle" args="messages /image 15 /image_throttle" />
-  <node pkg="image_capture" name="writer" type="writer.py" output="screen">
-     <remap from="image" to="image_throttle" />
+  <node pkg="boson" name="camera" type="capture.py" output="screen">
+    <param name="raw_video" type="bool" value="true" />
   </node>
+  <node pkg="topic_tools" name="throttler" type="throttle" args="messages /image 15 /image_throttle" />
 </launch>

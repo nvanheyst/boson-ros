@@ -19,16 +19,16 @@ def main(args):
     cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
     
     # Set fourcc code to Y16 and disable RGB conversion
-    capture_raw = rospy.get_param('~raw_video', default_value=False)
+    capture_raw = rospy.get_param('~raw_video', default=False)
 
     if capture_raw:
-        rospy.info("Raw (Y16) capture enabled.")
+        rospy.loginfo("Raw (Y16) capture enabled.")
         cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"Y16 "))
         cap.set(cv2.CAP_PROP_CONVERT_RGB, False)
     else:
-        rospy.info("RGB24 capture enabled.")
+        rospy.loginfo("RGB24 capture enabled.")
 
-    queue_size = rospy.get_param('~queue_size', default_value=10)
+    queue_size = rospy.get_param('~queue_size', default=10)
     image_pub = rospy.Publisher("image",Image, queue_size=queue_size)
 
     bridge = CvBridge()
