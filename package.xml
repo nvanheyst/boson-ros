@@ -1,7 +1,7 @@
 <package format="2">
   <name>boson</name>
   <version>0.1.0</version>
-  <description brief="boson">
+  <description>
   This package provides foo capability.
   </description>
   <maintainer email="j.veitchmichaelis@gmail.com">Josh Veitch-Michaelis</maintainer>
@@ -14,6 +14,5 @@
   <depend>sensor_msgs</depend>
   <depend>cv_bridge</depend>
 
-  <exec_depend>rospy</exec_depend>
 
 </package>

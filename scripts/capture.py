@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import roslib
 roslib.load_manifest("boson")
@@ -29,7 +29,7 @@ def main(args):
         rospy.loginfo("RGB24 capture enabled.")
 
     queue_size = rospy.get_param('~queue_size', default=10)
-    image_pub = rospy.Publisher("image",Image, queue_size=queue_size)
+    image_pub = rospy.Publisher("image", Image, queue_size=queue_size)
 
     bridge = CvBridge()
     frame_count = 0
@@ -40,7 +40,10 @@ def main(args):
         capture_success, image = cap.read()
 
         if capture_success:
-            image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="passthrough"))
+            if capture_raw:
+                image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="mono16"))
+            else:
+                image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="rgb8"))
             frame_count += 1
             rospy.logdebug("Frame %d", frame_count)
         else:
