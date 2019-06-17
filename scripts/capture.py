@@ -29,7 +29,7 @@ def main(args):
         rospy.loginfo("RGB24 capture enabled.")
 
     queue_size = rospy.get_param('~queue_size', default=10)
-    image_pub = rospy.Publisher("image", Image, queue_size=queue_size)
+    image_pub = rospy.Publisher("image_raw", Image, queue_size=queue_size)
 
     bridge = CvBridge()
     frame_count = 0
