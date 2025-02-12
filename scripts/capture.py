@@ -1,58 +1,78 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import roslib
-roslib.load_manifest("boson")
-import sys
-import rospy
+import rclpy
+from rclpy.node import Node
 import cv2
 import time
-from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 import numpy as np
 
-def main(args):
-    
-    rospy.init_node("camera", anonymous=True)
-   
-    # Need to use the V4L2 backend on Linux to get the right format
-    cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
-    
-    # Set fourcc code to Y16 and disable RGB conversion
-    capture_raw = rospy.get_param('~raw_video', default=False)
-
-    if capture_raw:
-        rospy.loginfo("Raw (Y16) capture enabled.")
-        cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"Y16 "))
-        cap.set(cv2.CAP_PROP_CONVERT_RGB, False)
-    else:
-        rospy.loginfo("RGB24 capture enabled.")
-
-    queue_size = rospy.get_param('~queue_size', default=10)
-    image_pub = rospy.Publisher("image_raw", Image, queue_size=queue_size)
-
-    bridge = CvBridge()
-    frame_count = 0
-    prev_capture = time.time()
-
-    while not rospy.is_shutdown():
-
-        capture_success, image = cap.read()
-
-        if capture_success:
-            if capture_raw:
-                image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="mono16"))
-            else:
-                image_pub.publish(bridge.cv2_to_imgmsg(image, encoding="rgb8"))
-            frame_count += 1
-            rospy.logdebug("Frame %d", frame_count)
+class BosonCameraNode(Node):
+    def __init__(self):
+        super().__init__('camera')
+        
+        self.declare_parameter('raw_video', False)
+        self.declare_parameter('queue_size', 10)
+        
+        self.capture_raw = self.get_parameter('raw_video').value
+        queue_size = self.get_parameter('queue_size').value
+        
+        self.image_pub = self.create_publisher(Image, 'image_raw', queue_size)
+        self.bridge = CvBridge()
+        
+        self.cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
+        
+        if self.capture_raw:
+            self.get_logger().info("Raw (Y16) capture enabled.")
+            self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"Y16 "))
+            self.cap.set(cv2.CAP_PROP_CONVERT_RGB, False)
         else:
-            rospy.logwarn(5, "Image capture failed")
+            self.get_logger().info("RGB24 capture enabled.")
+        
+        self.default_width = 640
+        self.default_height = 512
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.default_width)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.default_height)
+        
+        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        if self.width < self.default_width and self.height < self.default_height:
+            self.get_logger().info(f"Detected lower resolution {self.width}x{self.height}, adjusting...")
+        else:
+            self.get_logger().info(f"Using resolution {self.width}x{self.height}")
+        
+        self.timer = self.create_timer(0.1, self.capture_frame)
+        self.frame_count = 0
+        self.prev_capture = time.time()
+    
+    def capture_frame(self):
+        capture_success, image = self.cap.read()
+        if capture_success:
+            if self.capture_raw:
+                self.image_pub.publish(self.bridge.cv2_to_imgmsg(image, encoding="mono16"))
+            else:
+                self.image_pub.publish(self.bridge.cv2_to_imgmsg(image, encoding="rgb8"))
+            self.frame_count += 1
+            self.get_logger().debug(f"Frame {self.frame_count}")
+        else:
+            self.get_logger().warn("Image capture failed")
+        
+        self.get_logger().debug(f"FPS: {1.0/(time.time()-self.prev_capture):.2f}")
+        self.prev_capture = time.time()
+    
+    def destroy_node(self):
+        self.cap.release()
+        super().destroy_node()
 
-        rospy.logdebug("FPS: %f", 1.0/(time.time()-prev_capture))
-        prev_capture = time.time()
 
-    cap.release()
+def main(args=None):
+    rclpy.init(args=args)
+    node = BosonCameraNode()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == "__main__":
-    main(sys.argv)
+    main()
