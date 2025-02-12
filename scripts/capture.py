@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import roslib
 roslib.load_manifest("boson")
@@ -27,6 +27,21 @@ def main(args):
         cap.set(cv2.CAP_PROP_CONVERT_RGB, False)
     else:
         rospy.loginfo("RGB24 capture enabled.")
+
+    # Set default resolution (Boson 640)
+    default_width = 640
+    default_height = 512
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, default_width)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, default_height)
+    
+    # Get actual resolution
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    if width < default_width and height < default_height:
+        rospy.loginfo(f"Detected lower resolution {width}x{height}, adjusting...")
+    else:
+        rospy.loginfo(f"Using resolution {width}x{height}")
 
     queue_size = rospy.get_param('~queue_size', default=10)
     image_pub = rospy.Publisher("image_raw", Image, queue_size=queue_size)
