@@ -4,6 +4,7 @@ import rclpy
 from rclpy.node import Node
 import cv2
 import time
+import signal
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import numpy as np
@@ -22,6 +23,11 @@ class BosonCameraNode(Node):
         self.bridge = CvBridge()
         
         self.cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
+        
+        if not self.cap.isOpened():
+            self.get_logger().error("Failed to open camera. Exiting...")
+            rclpy.shutdown()
+            return
         
         if self.capture_raw:
             self.get_logger().info("Raw (Y16) capture enabled.")
@@ -46,6 +52,9 @@ class BosonCameraNode(Node):
         self.timer = self.create_timer(0.1, self.capture_frame)
         self.frame_count = 0
         self.prev_capture = time.time()
+        
+        # Handle SIGINT (Ctrl+C) to ensure proper cleanup
+        signal.signal(signal.SIGINT, self.shutdown_handler)
     
     def capture_frame(self):
         capture_success, image = self.cap.read()
@@ -62,8 +71,15 @@ class BosonCameraNode(Node):
         self.get_logger().debug(f"FPS: {1.0/(time.time()-self.prev_capture):.2f}")
         self.prev_capture = time.time()
     
+    def shutdown_handler(self, signum, frame):
+        self.get_logger().info("Shutdown signal received. Releasing camera...")
+        self.destroy_node()
+        rclpy.shutdown()
+    
     def destroy_node(self):
-        self.cap.release()
+        if self.cap.isOpened():
+            self.cap.release()
+            self.get_logger().info("Camera released successfully.")
         super().destroy_node()
 
 
