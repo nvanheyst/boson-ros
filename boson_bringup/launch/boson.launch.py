@@ -1,18 +1,26 @@
-import launch
-import launch_ros.actions
-from launch.substitutions import LaunchConfiguration
+from launch import LaunchDescription
+from launch_ros.actions import Node
+
 from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+
 
 def generate_launch_description():
-    return launch.LaunchDescription([
-        DeclareLaunchArgument(
-            'raw_video', default_value='false', description='Enable raw video mode'
-        ),
-        launch_ros.actions.Node(
-            package='boson_ros2',
-            executable='boson_node',
-            name='boson_node',
-            output='screen',
-            parameters=[{'raw_video': LaunchConfiguration('raw_video')}]
-        )
-    ])
+    ld = LaunchDescription()
+
+    ld.add_action(DeclareLaunchArgument(
+        'raw_video',
+        default_value='false',
+        description='Set to true to enable raw (Y16) video mode'
+    ))
+
+    boson_node = Node(
+        package="boson_ros2",
+        executable="boson_node",
+        name="boson_node",
+        parameters=[{"raw_video": LaunchConfiguration("raw_video")}],
+    )
+
+    ld.add_action(boson_node)
+
+    return ld
