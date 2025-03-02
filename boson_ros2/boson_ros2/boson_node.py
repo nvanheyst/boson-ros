@@ -17,7 +17,9 @@ class BosonCameraNode(Node):
         
         self.declare_parameter('raw_video', False)
         self.declare_parameter('queue_size', 10)
-        
+
+        rclpy.spin_once(self, timeout_sec=1.0)
+
         self.capture_raw = self.get_parameter('raw_video').value
         queue_size = self.get_parameter('queue_size').value
         
@@ -25,8 +27,11 @@ class BosonCameraNode(Node):
         self.bridge = CvBridge()
         
         self.cap = cv2.VideoCapture(0 + cv2.CAP_V4L2)
-        
-        self.capture_raw = True
+
+        if not self.cap.isOpened():
+            self.get_logger().error("Failed to open camera")
+            rclpy.shutdown()
+            return        
 
         if self.capture_raw:
             self.get_logger().info("Raw (Y16) capture enabled.")
@@ -90,6 +95,7 @@ def main(args=None):
     node = BosonCameraNode()
 
     signal.signal(signal.SIGINT, node.shutdown_handler)
+    signal.signal(signal.SIGTERM, node.shutdown_handler)
 
     rclpy.spin(node)
 
