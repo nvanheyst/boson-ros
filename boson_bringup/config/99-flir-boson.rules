@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", SUBSYSTEMS=="usb", ATTRS{idVendor}=="09cb", SYMLINK="flir-boson", MODE="0666"
+SUBSYSTEM=="video4linux", ATTRS{name}=="Boson*", GROUP="dialout", SYMLINK="flir-boson-video", ATTR{index}=="0", MODE="0666"
