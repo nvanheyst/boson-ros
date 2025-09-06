@@ -1,5 +1,0 @@
-<launch>
-  <node pkg="boson" name="camera" type="capture.py" output="screen">
-    <param name="raw_video" type="bool" value="true" />
-  </node>
-</launch>
